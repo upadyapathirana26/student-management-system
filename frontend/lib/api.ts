@@ -1,11 +1,13 @@
 import axios from 'axios';
 
-// This reads the URL from your .env.local file
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
-
 export const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  baseURL: 'http://localhost:8080/api',
 });
+
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('sms_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));

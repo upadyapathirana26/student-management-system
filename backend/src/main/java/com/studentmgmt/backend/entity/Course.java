@@ -19,6 +19,8 @@ public class Course {
 
     private Integer credits = 0;
 
+    private String imageFilename;
+
     @Column(updatable = false)
     private LocalDateTime createdAt;
 
@@ -27,4 +29,9 @@ public class Course {
         if (this.id == null) this.id = UUID.randomUUID();
         this.createdAt = LocalDateTime.now();
     }
+    public String getImageFilename() { return imageFilename; }
+    public void setImageFilename(String imageFilename) { this.imageFilename = imageFilename; }
+
+
+
 }
