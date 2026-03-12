@@ -18,9 +18,15 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+// Validation Imports
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins = "*") // Allow frontend to access
+@CrossOrigin(origins = "*")
 public class AuthController {
 
     @Autowired
@@ -36,14 +42,14 @@ public class AuthController {
     private UserRepository userRepository;
 
     @Autowired
-    private StudentRepository studentRepository; // Inject Student Repository
+    private StudentRepository studentRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     // REGISTER ENDPOINT
     @PostMapping("/register")
-    public Map<String, String> register(@RequestBody RegisterRequest request) {
+    public Map<String, String> register(@RequestBody @Valid RegisterRequest request) {
         // 1. Check if user already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("User already exists with this email");
@@ -59,22 +65,17 @@ public class AuthController {
         // 2. If Role is USER (Student), also create a Student Record
         if ("USER".equals(user.getRole())) {
             try {
-                // Check if student already exists for this email (safety check)
                 if (studentRepository.findByEmail(request.getEmail()).isEmpty()) {
                     Student student = new Student();
                     student.setEmail(request.getEmail());
                     student.setFirstName(request.getFirstName() != null && !request.getFirstName().isEmpty() ? request.getFirstName() : "New");
                     student.setLastName(request.getLastName() != null && !request.getLastName().isEmpty() ? request.getLastName() : "Student");
-                    student.setCourseId(null); // Unassigned initially
+                    student.setCourseId(null);
 
                     studentRepository.save(student);
                 }
             } catch (Exception e) {
-                // Log the error but don't fail the whole registration
-                // The user account was created, so they can login.
-                // Admin can add their student details later.
                 System.err.println("Warning: Failed to create student profile for " + request.getEmail() + ". Error: " + e.getMessage());
-                // Optionally throw new RuntimeException("User created, but student profile failed.");
             }
         }
 
@@ -83,11 +84,12 @@ public class AuthController {
         return response;
     }
 
-    // LOGIN ENDPOINT
+    // LOGIN ENDPOINT (Updated to use LoginRequest DTO)
     @PostMapping("/login")
-    public Map<String, String> login(@RequestBody User loginRequest) {
+    public Map<String, String> login(@RequestBody @Valid LoginRequest loginRequest) {
         try {
             // 1. Authenticate credentials
+            // We use the getters from our new DTO class
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPasswordHash())
             );
@@ -98,7 +100,6 @@ public class AuthController {
         // 2. Generate Token
         final UserDetails userDetails = userDetailsService.loadUserByUsername(loginRequest.getEmail());
 
-        // Get the actual user entity to retrieve the role
         Optional<User> existingUserOpt = userRepository.findByEmail(loginRequest.getEmail());
         if (existingUserOpt.isEmpty()) {
             throw new RuntimeException("User not found");
@@ -116,14 +117,46 @@ public class AuthController {
         return response;
     }
 
-    // --- DTO Class to handle Registration Data (Email, Pass, Role, Names) ---
-    // This allows us to receive fields that aren't in the User Entity directly
+    // --- DTO Class for Registration ---
     public static class RegisterRequest {
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
         private String email;
+
+        @NotBlank(message = "Password is required")
+        @Size(min = 6, message = "Password must be at least 6 characters")
         private String passwordHash;
+
+        @NotBlank(message = "Role is required")
         private String role;
+
+        @NotBlank(message = "First name is required")
         private String firstName;
+
+        @NotBlank(message = "Last name is required")
         private String lastName;
+
+        // Getters and Setters
+        public String getEmail() { return email; }
+        public void setEmail(String email) { this.email = email; }
+        public String getPasswordHash() { return passwordHash; }
+        public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
+        public String getFirstName() { return firstName; }
+        public void setFirstName(String firstName) { this.firstName = firstName; }
+        public String getLastName() { return lastName; }
+        public void setLastName(String lastName) { this.lastName = lastName; }
+    }
+
+    // --- NEW DTO Class for Login ---
+    public static class LoginRequest {
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
+        private String email;
+
+        @NotBlank(message = "Password is required")
+        private String passwordHash;
 
         // Getters and Setters
         public String getEmail() { return email; }
@@ -131,14 +164,5 @@ public class AuthController {
 
         public String getPasswordHash() { return passwordHash; }
         public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-
-        public String getRole() { return role; }
-        public void setRole(String role) { this.role = role; }
-
-        public String getFirstName() { return firstName; }
-        public void setFirstName(String firstName) { this.firstName = firstName; }
-
-        public String getLastName() { return lastName; }
-        public void setLastName(String lastName) { this.lastName = lastName; }
     }
 }

@@ -44,7 +44,7 @@ export default function AdminDashboardPage() {
     if (item) {
       setEditingId(item.id);
       
-      // CRITICAL FIX: Ensure we extract courseIds correctly
+      
       // The backend sends 'courseIds' as a list of strings thanks to our getCourseIds() method
       const existingCourseIds = item.courseIds || []; 
       
@@ -61,8 +61,28 @@ export default function AdminDashboardPage() {
       setFormState(type === 'course' ? { title: '', description: '', credits: 0, imageFile: null, imageFilename: '' } : { firstName: '', lastName: '', email: '', courseIds: [] });
     }
   };
-   const handleSubmit = async (e: React.FormEvent) => {
+     const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // --- 1. FRONTEND VALIDATION ---
+    if (modalOpen === 'student') {
+      if (!formState.firstName || !formState.lastName || !formState.email) {
+        alert("Please fill in all required fields (Name, Email).");
+        return;
+      }
+      if (!formState.email.includes('@')) {
+        alert("Please enter a valid email address.");
+        return;
+      }
+    }
+
+    if (modalOpen === 'course') {
+      if (!formState.title || !formState.description) {
+        alert("Course title and description are required.");
+        return;
+      }
+    }
+
     try {
       if (modalOpen === 'course') {
         const formData = new FormData();
@@ -88,12 +108,9 @@ export default function AdminDashboardPage() {
           courseIds: formState.courseIds || [] 
         };
 
-        // CRITICAL FIX: This block handles BOTH Create and Update
         if (editingId) {
-          // UPDATE existing student
           await api.put(`/students/${editingId}`, payload);
         } else {
-          // CREATE new student (This was missing before!)
           await api.post('/students', payload);
         }
       }
@@ -106,15 +123,40 @@ export default function AdminDashboardPage() {
       console.error("Full Error:", error);
       
       let msg = 'Failed to save changes';
+      
+      // --- 2. SMART ERROR HANDLING ---
       if (error.response) {
-        msg = error.response.data?.message || `Server Error: ${error.response.status}`;
-        console.error("Server Response:", error.response.data);
+        const status = error.response.status;
+        const data = error.response.data;
+
+        if (status === 400) {
+          // Handle Validation Errors (e.g., "First name is required")
+          // The backend sends a map like { firstName: "...", email: "..." }
+          if (typeof data === 'object') {
+            msg = Object.values(data).join(', ');
+          } else {
+            msg = data.message || "Invalid data provided.";
+          }
+        } 
+        else if (status === 409) {
+          // Handle Duplicate Key Errors (e.g., Email exists)
+          msg = data.error || "This record already exists.";
+        } 
+        else if (status === 403) {
+          msg = "Access Denied. Your session may have expired. Please login again.";
+        } 
+        else {
+          // Generic Server Errors
+          msg = data.error || data.message || `Server Error: ${status}`;
+        }
+      } else if (error.request) {
+        msg = "No response from server. Is the backend running?";
       }
       
       alert(msg); 
     }
   };
-
+  
   const handleDelete = async (type: 'course' | 'student', id: string) => {
     if(!confirm('Are you sure?')) return;
     try {

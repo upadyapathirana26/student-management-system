@@ -15,10 +15,13 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// 2. Update Metadata 
+// Update Meta Data
 export const metadata: Metadata = {
   title: "Student Management System",
   description: "Full-stack SMS built with Next.js and Spring Boot",
+  icons: {
+    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎓</text></svg>',
+  },
 };
 
 export default function RootLayout({

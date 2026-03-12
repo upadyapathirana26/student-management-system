@@ -10,6 +10,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
+import java.util.List;
 
 import java.util.*;
 
@@ -32,10 +36,6 @@ public class StudentController {
         return studentRepository.findAll();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Student> getStudent(@PathVariable UUID id) {
-        return studentRepository.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
 
     // GET MY COURSES (For Student Dashboard)
     @GetMapping("/my-courses")
@@ -49,8 +49,13 @@ public class StudentController {
                 .toList();
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Student> getStudent(@PathVariable UUID id) {
+        return studentRepository.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+    }
+
     @PostMapping
-    public Student createStudent(@RequestBody StudentRequest request) {
+    public Student createStudent(@RequestBody @Valid StudentRequest request) {
         Student student = new Student();
         student.setFirstName(request.getFirstName());
         student.setLastName(request.getLastName());
@@ -81,7 +86,7 @@ public class StudentController {
     // ADDED
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity<Student> updateStudent(@PathVariable UUID id, @RequestBody StudentRequest request) {
+    public ResponseEntity<Student> updateStudent(@PathVariable UUID id, @RequestBody @Valid StudentRequest request) {
         return studentRepository.findById(id).map(student -> {
             student.setFirstName(request.getFirstName());
             student.setLastName(request.getLastName());
@@ -123,18 +128,29 @@ public class StudentController {
 
     // DTO to handle List of Course IDs
     public static class StudentRequest {
+
+        @NotBlank(message = "First name is required")
         private String firstName;
+
+        @NotBlank(message = "Last name is required")
         private String lastName;
+
+        @NotBlank(message = "Email is required")
+        @Email(message = "Invalid email format")
         private String email;
-        private List<String> courseIds; // Matches frontend 'courseIds'
+
+        private List<String> courseIds;
 
         // Getters and Setters
         public String getFirstName() { return firstName; }
         public void setFirstName(String firstName) { this.firstName = firstName; }
+
         public String getLastName() { return lastName; }
         public void setLastName(String lastName) { this.lastName = lastName; }
+
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
+
         public List<String> getCourseIds() { return courseIds; }
         public void setCourseIds(List<String> courseIds) { this.courseIds = courseIds; }
     }
