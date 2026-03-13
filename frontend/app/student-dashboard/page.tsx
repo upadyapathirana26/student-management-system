@@ -19,32 +19,29 @@ export default function StudentDashboardPage() {
   }, []);
 
   const fetchData = async () => {
-    try {
-      // 1. Fetch Courses
-      const coursesRes = await api.get('/students/my-courses', { 
-        params: { email: user?.email } 
-      });
-      setEnrolledCourses(coursesRes.data);
+  try {
+    // Fetch Courses
+    const coursesRes = await api.get('/students/my-courses', { 
+      params: { email: user?.email } 
+    });
+    setEnrolledCourses(coursesRes.data);
 
-      // 2. Fetch Student Profile Details (Optional: if you want to show name/ID)
-      // Assuming you have an endpoint to get student by email, or we can just use Auth context data
-      // If you don't have a specific endpoint, we can just display user.email from context
-      // For now, let's try to find the student record to show First/Last name
-      try {
-        const studentRes = await api.get('/students', { params: { email: user?.email } });
-        if (studentRes.data && studentRes.data.length > 0) {
-          setStudentData(studentRes.data[0]);
-        }
-      } catch (e) {
-        console.log("Could not fetch detailed student profile, using auth data only.");
-      }
-
-    } catch (err) {
-      console.error("Failed to fetch data:", err);
-    } finally {
-      setLoading(false);
+    // Fetch ONLY this specific student's profile
+    const allStudentsRes = await api.get('/students');
+    const myStudentRecord = allStudentsRes.data.find(
+      (s: any) => s.email === user?.email
+    );
+    
+    if (myStudentRecord) {
+      setStudentData(myStudentRecord);
     }
-  };
+
+  } catch (err) {
+    console.error("Failed to fetch data:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-purple-600">Loading...</div>;
 
@@ -157,64 +154,70 @@ export default function StudentDashboardPage() {
               </>
             )}
 
-            {/* --- TAB CONTENT: MY PROFILE --- */}
-            {activeTab === 'profile' && (
-              <div className="max-w-2xl mx-auto">
-                <div className="mb-8">
-                  <h2 className="text-3xl font-bold text-slate-800">My Profile</h2>
-                  <p className="text-slate-500 text-sm mt-1">Manage your personal information.</p>
-                </div>
+                        {/* --- TAB CONTENT: MY PROFILE --- */}
+{activeTab === 'profile' && (
+  <div className="max-w-2xl mx-auto">
+    <div className="mb-8">
+      <h2 className="text-3xl font-bold text-slate-800">My Profile</h2>
+      <p className="text-slate-500 text-sm mt-1">Manage your personal information.</p>
+    </div>
 
-                <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                  <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-white/20 p-4 rounded-full">
-                        <User size={40} />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold">
-                          {studentData ? `${studentData.firstName} ${studentData.lastName}` : 'Student'}
-                        </h3>
-                        <p className="text-purple-100 opacity-90">{user?.email}</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">First Name</label>
-                        <p className="text-lg text-slate-800 font-medium">{studentData?.firstName || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Last Name</label>
-                        <p className="text-lg text-slate-800 font-medium">{studentData?.lastName || 'N/A'}</p>
-                      </div>
-                    </div>
+    <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 p-6 text-white">
+        <div className="flex items-center gap-4">
+          <div className="bg-white/20 p-4 rounded-full">
+            <User size={40} />
+          </div>
+          <div>
+            {/* ✅ FIX: Use studentData for Name if available, fallback to 'Student' */}
+            <h3 className="text-2xl font-bold">
+              {studentData ? `${studentData.firstName} ${studentData.lastName}` : 'Loading...'}
+            </h3>
+            {/* ✅ FIX: Use studentData email if available, otherwise user email */}
+            <p className="text-purple-100 opacity-90">
+              {studentData ? studentData.email : user?.email}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="p-6 space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">First Name</label>
+            <p className="text-lg text-slate-800 font-medium">{studentData?.firstName || 'N/A'}</p>
+          </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Last Name</label>
+            <p className="text-lg text-slate-800 font-medium">{studentData?.lastName || 'N/A'}</p>
+          </div>
+        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
-                      <p className="text-lg text-slate-800 font-medium">{user?.email}</p>
-                    </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Email Address</label>
+          {/* ✅ FIX: Consistent source */}
+          <p className="text-lg text-slate-800 font-medium">
+            {studentData ? studentData.email : user?.email}
+          </p>
+        </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
-                      <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
-                        {user?.role || 'Student'}
-                      </span>
-                    </div>
+        <div>
+          <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Role</label>
+          <span className="inline-block px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">
+            {user?.role || 'Student'}
+          </span>
+        </div>
 
-                    <div className="pt-6 border-t border-slate-100">
-                      <p className="text-sm text-slate-500 italic">
-                        Note: To update your profile details, please contact the system administrator.
-                        Email - admin.stmanagemt@gmail.com
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
+        <div className="pt-6 border-t border-slate-100">
+          <p className="text-sm text-slate-500 italic">
+            Note: To update your profile details, please contact the system administrator.
+            Email - admin.stmanagemt@gmail.com
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
             {/* --- TAB CONTENT: ABOUT SYSTEM --- */}
             {activeTab === 'about' && (
               <div className="max-w-3xl mx-auto">
