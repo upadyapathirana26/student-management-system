@@ -2,8 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
-import { UserPlus, Mail, Lock, UserCheck, AlertCircle, ArrowLeft } from 'lucide-react';
-import { Role } from '@/types';
+import { UserPlus, Mail, Lock, AlertCircle } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -11,57 +10,46 @@ export default function RegisterPage() {
     firstName: '',
     lastName: '',
     email: '',
-    password: '',
-    role: 'USER' as Role
+    password: ''
   });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
-  
-    const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess('');
     setLoading(true);
 
     try {
-      // 1. Create the User Account (for Login)
+      // Send registration request
+      // Note: We send 'USER' role, but the Backend forces this anyway for security.
       const response = await api.post('/auth/register', {
         email: formData.email,
         passwordHash: formData.password,
-        role: formData.role,
+        role: 'USER', 
         firstName: formData.firstName,
         lastName: formData.lastName
       });
 
-      // 2. Check if the response is successful (Status 200-299)
       if (response.status >= 200 && response.status < 300) {
         setSuccess('Registration successful! Redirecting to login...');
-        
-        // Optional: If role is Student, you could also create the student record here
-        
-        
         setTimeout(() => {
           router.push('/login');
         }, 2000);
       } else {
-        // This branch should rarely be hit with Axios unless status is weird
         setError('Registration failed. Please try again.');
       }
 
     } catch (err: any) {
       console.error("Registration error:", err);
       
-      // Only show error if there's actually an error response
       if (err.response) {
-        // Backend returned an error status (400, 409, 500, etc.)
         setError(err.response.data?.error || err.response.data?.message || "Registration failed. Email might already exist.");
       } else if (err.request) {
-        // Request was made but no response received (network issue)
         setError("Network error. Please check your connection.");
       } else {
-        // Something else happened
         setError("An unexpected error occurred.");
       }
     } finally {
@@ -99,28 +87,26 @@ export default function RegisterPage() {
             </div>
           )}
 
-          {/* Name Fields (Only shown if Student, but kept for all for simplicity or you can hide) */}
+          {/* Name Fields - Always Required */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">First Name</label>
               <input 
-                required={formData.role === 'USER'} 
-                disabled={formData.role === 'ADMIN'}
+                required
                 placeholder="John" 
                 value={formData.firstName} 
                 onChange={e=>setFormData({...formData, firstName:e.target.value})} 
-                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100" 
+                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none" 
               />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Last Name</label>
               <input 
-                required={formData.role === 'USER'} 
-                disabled={formData.role === 'ADMIN'}
+                required
                 placeholder="Doe" 
                 value={formData.lastName} 
                 onChange={e=>setFormData({...formData, lastName:e.target.value})} 
-                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none disabled:bg-slate-100" 
+                className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none" 
               />
             </div>
           </div>
@@ -155,37 +141,6 @@ export default function RegisterPage() {
                 className="w-full pl-10 pr-4 py-3 rounded-lg border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                 placeholder="Min 6 characters"
               />
-            </div>
-          </div>
-
-          {/* Role Selection */}
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase mb-2">I am a...</label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: 'ADMIN'})}
-                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl border-2 transition-all ${
-                  formData.role === 'ADMIN' 
-                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-md' 
-                    : 'border-slate-200 text-slate-500 hover:border-indigo-300'
-                }`}
-              >
-                <UserCheck size={24} />
-                <span className="font-bold">Administrator</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setFormData({...formData, role: 'USER'})}
-                className={`flex flex-col items-center justify-center gap-2 py-4 rounded-xl border-2 transition-all ${
-                  formData.role === 'USER' 
-                    ? 'border-purple-600 bg-purple-50 text-purple-700 shadow-md' 
-                    : 'border-slate-200 text-slate-500 hover:border-purple-300'
-                }`}
-              >
-                <UserCheck size={24} />
-                <span className="font-bold">Student</span>
-              </button>
             </div>
           </div>
 
