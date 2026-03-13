@@ -6,16 +6,17 @@ import com.studentmgmt.backend.entity.Student;
 import com.studentmgmt.backend.repository.CourseRepository;
 import com.studentmgmt.backend.repository.EnrollmentRepository;
 import com.studentmgmt.backend.repository.StudentRepository;
+import com.studentmgmt.backend.service.StudentService;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import java.util.List;
 
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/students")
@@ -23,7 +24,7 @@ import java.util.*;
 public class StudentController {
 
     @Autowired
-    private StudentRepository studentRepository;
+    private StudentService studentService;
 
     @Autowired
     private EnrollmentRepository enrollmentRepository;
@@ -31,13 +32,20 @@ public class StudentController {
     @Autowired
     private CourseRepository courseRepository;
 
+    @Autowired
+    private StudentRepository studentRepository; // Kept for specific helper methods if needed
+
+    // ✅ Returns only non-admin students (Logic moved to Service)
     @GetMapping
     public List<Student> getAllStudents() {
-        return studentRepository.findAll();
+        return studentService.getAllStudents();
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Student> getStudent(@PathVariable UUID id) {
+        return ResponseEntity.ok(studentService.getStudentById(id));
+    }
 
-    // GET MY COURSES (For Student Dashboard)
     @GetMapping("/my-courses")
     public List<Course> getMyCourses(@RequestParam String email) {
         Student student = studentRepository.findByEmail(email)
@@ -49,11 +57,6 @@ public class StudentController {
                 .toList();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Student> getStudent(@PathVariable UUID id) {
-        return studentRepository.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
-    }
-
     @PostMapping
     public Student createStudent(@RequestBody @Valid StudentRequest request) {
         Student student = new Student();
@@ -61,29 +64,28 @@ public class StudentController {
         student.setLastName(request.getLastName());
         student.setEmail(request.getEmail());
 
-        Student savedStudent = studentRepository.save(student);
+        Student savedStudent = studentService.createStudent(student);
 
-        // Handle Multiple Course Enrollments
         if (request.getCourseIds() != null) {
             for (String courseIdStr : request.getCourseIds()) {
                 try {
                     UUID courseId = UUID.fromString(courseIdStr);
                     if (courseRepository.existsById(courseId)) {
-                        Course course = new Course();
-                        course.setId(courseId);
-
+                        Course course = courseRepository.findById(courseId).get();
                         Enrollment enrollment = new Enrollment();
                         enrollment.setStudent(savedStudent);
                         enrollment.setCourse(course);
                         enrollmentRepository.save(enrollment);
                     }
-                } catch (IllegalArgumentException e) { /* Skip invalid IDs */ }
+                } catch (IllegalArgumentException e) {
+                    // Skip invalid IDs
+                }
             }
         }
 
         return savedStudent;
     }
-    // ADDED
+
     @PutMapping("/{id}")
     @Transactional
     public ResponseEntity<Student> updateStudent(@PathVariable UUID id, @RequestBody @Valid StudentRequest request) {
@@ -92,13 +94,9 @@ public class StudentController {
             student.setLastName(request.getLastName());
             student.setEmail(request.getEmail());
 
-            // 1. Delete old enrollments
             enrollmentRepository.deleteByStudentId(id);
-
-            // 2. FORCE THE DELETE TO HAPPEN NOW (This fixes the crash)
             enrollmentRepository.flush();
 
-            // 3. Add new enrollments
             if (request.getCourseIds() != null) {
                 for (String courseIdStr : request.getCourseIds()) {
                     try {
@@ -110,25 +108,26 @@ public class StudentController {
                             enrollment.setCourse(course);
                             enrollmentRepository.save(enrollment);
                         }
-                    } catch (Exception e) { /* Ignore bad IDs */ }
+                    } catch (Exception e) {
+                        // Ignore bad IDs
+                    }
                 }
             }
 
             return ResponseEntity.ok(studentRepository.save(student));
         }).orElse(ResponseEntity.notFound().build());
     }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteStudent(@PathVariable UUID id) {
         if (studentRepository.existsById(id)) {
-            studentRepository.deleteById(id);
+            studentService.deleteStudent(id);
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
     }
 
-    // DTO to handle List of Course IDs
     public static class StudentRequest {
-
         @NotBlank(message = "First name is required")
         private String firstName;
 
@@ -141,16 +140,12 @@ public class StudentController {
 
         private List<String> courseIds;
 
-        // Getters and Setters
         public String getFirstName() { return firstName; }
         public void setFirstName(String firstName) { this.firstName = firstName; }
-
         public String getLastName() { return lastName; }
         public void setLastName(String lastName) { this.lastName = lastName; }
-
         public String getEmail() { return email; }
         public void setEmail(String email) { this.email = email; }
-
         public List<String> getCourseIds() { return courseIds; }
         public void setCourseIds(List<String> courseIds) { this.courseIds = courseIds; }
     }
