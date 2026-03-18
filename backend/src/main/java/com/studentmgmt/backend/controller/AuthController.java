@@ -1,5 +1,7 @@
 package com.studentmgmt.backend.controller;
 
+import com.studentmgmt.backend.dto.AuthDTOs.LoginRequest;
+import com.studentmgmt.backend.dto.AuthDTOs.RegisterRequest;
 import com.studentmgmt.backend.entity.Student;
 import com.studentmgmt.backend.entity.User;
 import com.studentmgmt.backend.repository.StudentRepository;
@@ -7,9 +9,6 @@ import com.studentmgmt.backend.repository.UserRepository;
 import com.studentmgmt.backend.service.CustomUserDetailsService;
 import com.studentmgmt.backend.util.JwtUtil;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -47,19 +46,16 @@ public class AuthController {
 
     @PostMapping("/register")
     public Map<String, String> register(@RequestBody @Valid RegisterRequest request) {
-        // Check if user already exists
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
             throw new RuntimeException("User already exists with this email");
         }
 
-        // Create User
         User user = new User();
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPasswordHash()));
         user.setRole("USER"); // Hardcoded for security
         userRepository.save(user);
 
-        // Create Student Profile - Only if it doesn't exist
         if (studentRepository.findByEmail(request.getEmail()).isEmpty()) {
             Student student = new Student();
             student.setEmail(request.getEmail());
@@ -102,44 +98,5 @@ public class AuthController {
         response.put("email", existingUser.getEmail());
 
         return response;
-    }
-
-    public static class RegisterRequest {
-        @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        private String email;
-
-        @NotBlank(message = "Password is required")
-        @Size(min = 6, message = "Password must be at least 6 characters")
-        private String passwordHash;
-
-        @NotBlank(message = "First name is required")
-        private String firstName;
-
-        @NotBlank(message = "Last name is required")
-        private String lastName;
-
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getPasswordHash() { return passwordHash; }
-        public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
-        public String getFirstName() { return firstName; }
-        public void setFirstName(String firstName) { this.firstName = firstName; }
-        public String getLastName() { return lastName; }
-        public void setLastName(String lastName) { this.lastName = lastName; }
-    }
-
-    public static class LoginRequest {
-        @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        private String email;
-
-        @NotBlank(message = "Password is required")
-        private String passwordHash;
-
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public String getPasswordHash() { return passwordHash; }
-        public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     }
 }

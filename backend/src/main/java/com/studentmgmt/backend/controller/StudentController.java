@@ -1,5 +1,6 @@
 package com.studentmgmt.backend.controller;
 
+import com.studentmgmt.backend.dto.StudentDTOs.StudentRequest;
 import com.studentmgmt.backend.entity.Course;
 import com.studentmgmt.backend.entity.Enrollment;
 import com.studentmgmt.backend.entity.Student;
@@ -8,8 +9,6 @@ import com.studentmgmt.backend.repository.EnrollmentRepository;
 import com.studentmgmt.backend.repository.StudentRepository;
 import com.studentmgmt.backend.service.StudentService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,9 +32,8 @@ public class StudentController {
     private CourseRepository courseRepository;
 
     @Autowired
-    private StudentRepository studentRepository; // Kept for specific helper methods if needed
+    private StudentRepository studentRepository;
 
-    // ✅ Returns only non-admin students (Logic moved to Service)
     @GetMapping
     public List<Student> getAllStudents() {
         return studentService.getAllStudents();
@@ -125,28 +123,5 @@ public class StudentController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
-    }
-
-    public static class StudentRequest {
-        @NotBlank(message = "First name is required")
-        private String firstName;
-
-        @NotBlank(message = "Last name is required")
-        private String lastName;
-
-        @NotBlank(message = "Email is required")
-        @Email(message = "Invalid email format")
-        private String email;
-
-        private List<String> courseIds;
-
-        public String getFirstName() { return firstName; }
-        public void setFirstName(String firstName) { this.firstName = firstName; }
-        public String getLastName() { return lastName; }
-        public void setLastName(String lastName) { this.lastName = lastName; }
-        public String getEmail() { return email; }
-        public void setEmail(String email) { this.email = email; }
-        public List<String> getCourseIds() { return courseIds; }
-        public void setCourseIds(List<String> courseIds) { this.courseIds = courseIds; }
     }
 }
